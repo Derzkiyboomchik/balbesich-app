@@ -1,48 +1,184 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Посещаемость | balbesich.ru</title>
+  <meta name="theme-color" content="#090d16">
+  <title>Ведомость посещаемости</title>
   <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=1.1">
+  <link rel="stylesheet" href="style.css?v=2.1">
 </head>
 <body>
   <div class="app-container" id="app-body">
     <!-- Header -->
     <header class="app-header">
-      <div class="header-top">
-        <div class="group-title">
-          <span class="group-badge">ГРУППА</span>
-          <span class="group-name" id="group-title-text">Загрузка...</span>
+      <div class="header-main">
+        <div class="group-brand">
+          <div class="group-icon" id="group-icon">🎓</div>
+          <div class="group-meta">
+            <div class="group-tag-row">
+              <span class="group-badge" id="group-title-text">Загрузка...</span>
+              <span class="stat-pill-sm" id="group-rate-badge">--% явка</span>
+            </div>
+            <div class="updated-time" id="update-time-text">Подключение...</div>
+          </div>
         </div>
-        <div class="updated-time" id="update-time-text"></div>
+        <div class="header-actions">
+          <button class="btn-icon" id="btn-theme-toggle" title="Переключить тему" aria-label="Тема">
+            <svg class="icon-theme" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path class="sun" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+          </button>
+          <button class="btn-icon" id="btn-refresh" title="Обновить данные" aria-label="Обновить">
+            <svg class="icon-refresh" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19"/>
+            </svg>
+          </button>
+        </div>
       </div>
+
       <!-- Subject Tabs -->
-      <div class="tabs-scroll" id="subject-tabs">
-        <button class="tab-btn active">Сводная ведомость</button>
+      <div class="tabs-container">
+        <div class="tabs-scroll" id="subject-tabs">
+          <button class="tab-btn active"><span class="tab-dot"></span> Сводная ведомость</button>
+        </div>
+      </div>
+
+      <!-- Active Teacher & Subject Info Card -->
+      <div class="teacher-card" id="teacher-banner" style="display: none;">
+        <div class="teacher-card-left">
+          <span class="teacher-avatar">👨‍🏫</span>
+          <div class="teacher-info">
+            <div class="teacher-title">Преподаватель</div>
+            <div class="teacher-name" id="teacher-name-text">Не указан</div>
+          </div>
+        </div>
+        <div class="teacher-card-stats" id="teacher-stats-text"></div>
       </div>
     </header>
 
-    <!-- Toolbar / Legend -->
-    <div class="bar-tools">
-      <div class="legend">
-        <div class="legend-item"><span class="legend-dot danger"></span> Неуважительно</div>
-        <div class="legend-item"><span class="legend-dot warn"></span> Уважительно</div>
+    <!-- Toolbar / Search / Quick Actions -->
+    <div class="toolbar">
+      <div class="search-box">
+        <svg class="search-icon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="student-search-input" placeholder="Поиск по фамилии..." autocomplete="off" spellcheck="false">
+        <button class="btn-clear-search" id="btn-clear-search" style="display: none;">✕</button>
       </div>
-      <div style="font-size: 10px;">← свайп по датам →</div>
+
+      <div class="quick-actions">
+        <button class="action-chip" id="filter-absents-btn" title="Показать только с пропусками">
+          <span class="chip-dot danger"></span> С пропусками
+        </button>
+        <button class="action-chip" id="btn-find-me" style="display: none;" title="Перейти к моей строке">
+          📍 Где я?
+        </button>
+        <button class="action-chip" id="btn-scroll-today" title="Перейти к сегодняшней паре">
+          📅 Сегодня
+        </button>
+        <button class="action-chip chip-sort" id="btn-sort-toggle" title="Изменить сортировку">
+          <span id="sort-label">🔤 А-Я</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Table content -->
+    <!-- Sub-bar: Legend & Counter -->
+    <div class="legend-bar">
+      <div class="legend-items">
+        <span class="legend-pill pill-2">2ч</span>
+        <span class="legend-desc">Пропуск</span>
+        <span class="legend-pill pill-уп">УП</span>
+        <span class="legend-desc">Уваж.</span>
+        <span class="legend-dot-ok">●</span>
+        <span class="legend-desc">Был</span>
+      </div>
+      <div class="legend-count" id="filtered-students-count">Загрузка...</div>
+    </div>
+
+    <!-- Table Container / Skeleton & Content -->
     <div class="table-wrapper" id="table-container">
-      <div class="state-box">
-        <div class="spinner"></div>
-        <p style="color: var(--text-muted); font-size: 13px;">Загрузка ведомости...</p>
+      <div class="skeleton-wrapper">
+        <div class="skeleton-header"></div>
+        <div class="skeleton-row shimmer"></div>
+        <div class="skeleton-row shimmer"></div>
+        <div class="skeleton-row shimmer"></div>
+        <div class="skeleton-row shimmer"></div>
+        <div class="skeleton-row shimmer"></div>
+        <div class="skeleton-row shimmer"></div>
       </div>
     </div>
   </div>
 
-  <script src="app.js?v=1.1"></script>
+  <!-- 1. Detail Bottom Sheet Modal (Cell Attendance) -->
+  <div class="modal-backdrop" id="cell-modal-backdrop">
+    <div class="modal-sheet" id="cell-modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="modal-subj-badge" id="m-subj-type">Лекция</div>
+        <h3 class="modal-subj-title" id="m-subj-name">Дисциплина</h3>
+        <div class="modal-teacher" id="m-teacher-name">Преподаватель</div>
+      </div>
+      <div class="modal-body">
+        <div class="modal-info-row">
+          <div class="m-label">Студент</div>
+          <div class="m-value bold" id="m-student-name">Балашов А.С.</div>
+        </div>
+        <div class="modal-info-row">
+          <div class="m-label">Дата и пара</div>
+          <div class="m-value" id="m-lesson-time">14.12 (ПН) · 2 пара</div>
+        </div>
+        <div class="modal-info-row">
+          <div class="m-label">Время занятия</div>
+          <div class="m-value" id="m-lesson-clock">09:00 – 10:35</div>
+        </div>
+        <div class="modal-info-row">
+          <div class="m-label">Статус явки</div>
+          <div class="m-value" id="m-attendance-status">
+            <span class="badge-mark badge-2">2ч</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-modal-close" id="btn-modal-close">Закрыть</button>
+    </div>
+  </div>
+
+  <!-- 2. Student Profile Bottom Sheet Modal -->
+  <div class="modal-backdrop" id="student-modal-backdrop">
+    <div class="modal-sheet" id="student-modal-sheet">
+      <div class="modal-handle"></div>
+      <div class="modal-header">
+        <div class="st-profile-avatar" id="sp-avatar">👨‍🎓</div>
+        <h3 class="modal-subj-title" id="sp-name">Балашов А.С.</h3>
+        <div class="modal-teacher" id="sp-subgroup">Группа · Подгруппа 1</div>
+      </div>
+      <div class="modal-body">
+        <div class="sp-rate-card">
+          <div class="sp-rate-circle">
+            <span class="sp-rate-val" id="sp-rate-percent">95%</span>
+            <span class="sp-rate-lbl">явка</span>
+          </div>
+          <div class="sp-rate-breakdown">
+            <div class="sp-break-item">
+              <span class="sp-break-num danger" id="sp-total-abs">4ч</span>
+              <span class="sp-break-lbl">Всего пропущено</span>
+            </div>
+            <div class="sp-break-item">
+              <span class="sp-break-num warn" id="sp-excused-abs">2ч</span>
+              <span class="sp-break-lbl">Уважительная (УП)</span>
+            </div>
+          </div>
+        </div>
+        <div class="sp-subjects-list" id="sp-subjects-breakdown">
+          <!-- Dynamic breakdown by subjects -->
+        </div>
+      </div>
+      <button class="btn-modal-close" id="btn-sp-modal-close">Готово</button>
+    </div>
+  </div>
+
+  <script src="app.js?v=2.1"></script>
 </body>
 </html>
