@@ -1,0 +1,4 @@
+# Local data files
+data/
+*.log
+.DS_Store
