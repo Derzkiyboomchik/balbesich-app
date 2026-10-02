@@ -182,8 +182,17 @@
     const tabsContainer = document.getElementById('subject-tabs');
     tabsContainer.innerHTML = '';
 
-    const subjects = appData.subjects || [];
-    const tabs = [{ id: 'all', name: 'Сводная ведомость' }, ...subjects];
+    const rawSubjects = appData.subjects || [];
+    // Дедупликация: ровно один таб "Сводная ведомость" в начале и уникальные дисциплины
+    const tabs = [{ id: 'all', name: 'Сводная ведомость' }];
+    const seen = new Set(['all']);
+
+    rawSubjects.forEach((subj) => {
+      if (subj && subj.id && subj.id !== 'all' && !seen.has(subj.id)) {
+        seen.add(subj.id);
+        tabs.push(subj);
+      }
+    });
 
     tabs.forEach((subj) => {
       const btn = document.createElement('button');
@@ -231,11 +240,17 @@
   function renderTable() {
     const tableContainer = document.getElementById('table-container');
 
-    // 1. Фильтрация занятий по предмету
+    // 1. Фильтрация и дедупликация занятий по предмету
     let filteredLessons = appData.lessons || [];
     if (activeSubject !== 'all') {
       filteredLessons = filteredLessons.filter((l) => l.subject_id === activeSubject);
     }
+    const seenLessonIds = new Set();
+    filteredLessons = filteredLessons.filter((l) => {
+      if (!l || seenLessonIds.has(l.id)) return false;
+      seenLessonIds.add(l.id);
+      return true;
+    });
 
     if (filteredLessons.length === 0) {
       tableContainer.innerHTML = `
@@ -248,11 +263,15 @@
       return;
     }
 
-    // 2. Фильтрация и сортировка студентов
+    // 2. Фильтрация, дедупликация и сортировка студентов
     const query = searchQuery.trim().toLowerCase();
     const records = appData.records || {};
 
+    const seenStudentIds = new Set();
     let filteredStudents = (appData.students || []).filter((student) => {
+      if (!student || seenStudentIds.has(student.id)) return false;
+      seenStudentIds.add(student.id);
+
       if (query && !student.short_fio.toLowerCase().includes(query)) {
         return false;
       }
@@ -578,7 +597,7 @@
     const scrollTodayBtn = document.getElementById('btn-scroll-today');
     scrollTodayBtn.addEventListener('click', () => {
       triggerHaptic('light');
-      const wrapper = document.querySelector('.table-wrapper');
+      const wrapper = document.getElementById('table-container');
       if (!wrapper) return;
 
       const now = new Date();
@@ -586,12 +605,50 @@
       const todayTh = document.querySelector(`th[data-date="${todayStr}"]`);
 
       if (todayTh) {
-        todayTh.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        const stickyWidth = 148;
+        const targetLeft = todayTh.offsetLeft - stickyWidth - 12;
+        wrapper.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
       } else {
         // Если сегодня пар нет — скроллим к последней паре
         wrapper.scrollTo({ left: wrapper.scrollWidth, behavior: 'smooth' });
       }
     });
+
+    // Горизонтальная прокрутка таблицы колесиком мыши (для ПК / Telegram Desktop)
+    const tableWrapper = document.getElementById('table-container');
+    if (tableWrapper) {
+      tableWrapper.addEventListener('wheel', (e) => {
+        // Не перехватываем зум браузера (Ctrl + Wheel)
+        if (e.ctrlKey) return;
+
+        // Если курсор над закрепленной колонкой студентов слева и список не помещается по высоте
+        // разрешаем обычный вертикальный скролл
+        const isOverStickyCol = e.target.closest('.sticky-col');
+        const canScrollVertically = tableWrapper.scrollHeight > tableWrapper.clientHeight;
+
+        if (isOverStickyCol && canScrollVertically) {
+          return;
+        }
+
+        // Для всей сетки занятий преобразуем вращение колесика в плавную горизонтальную прокрутку
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          tableWrapper.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    }
+
+    // Прокрутка табов предметов колесиком мыши на ПК
+    const tabsScroll = document.getElementById('subject-tabs');
+    if (tabsScroll) {
+      tabsScroll.addEventListener('wheel', (e) => {
+        if (e.ctrlKey) return;
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          tabsScroll.scrollLeft += e.deltaY;
+        }
+      }, { passive: false });
+    }
 
     // Переключение сортировки
     const btnSort = document.getElementById('btn-sort-toggle');

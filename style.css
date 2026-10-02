@@ -1000,3 +1000,43 @@ td.is-today-col {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ── Custom Scrollbars for PC / Desktop ── */
+.table-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) var(--surface-header);
+}
+
+.table-wrapper::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+.table-wrapper::-webkit-scrollbar-track {
+  background: var(--surface-header);
+}
+.table-wrapper::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+.table-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.tabs-scroll {
+  scrollbar-width: none;
+}
+.tabs-scroll:hover {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+.tabs-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.tabs-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tabs-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 2px;
+}
+
